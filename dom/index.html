@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<link rel="import" href="rn-layer.html"> 
+<link rel="import" href="rn-layer-view.html"> 
+<link rel="import" href="rn-layer-view-cache.html"> 
+<link rel="import" href="rn-tile-store.html"> 
+<!-- <script src="bower_components/platform/platform.js"></script> -->
+
+<style>
+rn-layer-view {
+  position: absolute;
+  top: 0px;
+  left: 0px;
+}
+</style>
+
+<rn-tile-store id='store'></rn-tile-store>
+
+<rn-layer-view-cache id='cache'></rn-layer-view-cache>
+
+<script>
+window.addEventListener('polymer-ready', function(e) {
+ 
+  cache.tileStore = store;
+  for (var i = 0; i < 100; i++) {
+    cache.layers.push(document.createElement('rn-layer'));
+  }
+ 
+  requestAnimationFrame(function() { cache.currentLayer = 0 });
+  //requestAnimationFrame(change);
+});
+
+function change() {
+  cache.currentLayer = (cache.currentLayer == 0) ? 1 : 0;
+  requestAnimationFrame(change);
+}
+</script>

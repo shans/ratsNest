@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<link rel="import" href="bower_components/polymer/polymer.html">
+
+<script>
+var uid = 0;
+</script>
+
+<polymer-element name="rn-tile-store" attributes="names">
+  <template>
+  </template>
+  <script>
+    Polymer({
+      names: [],
+      ctxs: [],
+      layerData: [],
+      first: uid,
+      ready: function() {
+	for (var i = 0; i < 20; i++) {
+	  var name = {id: uid, canvas: 'c' + uid};
+	  uid++;
+	  var ctx = document.getCSSCanvasContext('2d', name.canvas, 20, 20);
+	  ctx.fillStyle = 'rgb(' + Math.round(Math.random() * 255) + ', ' +
+			  Math.round(Math.random() * 255) + ', ' + 
+			  Math.round(Math.random() * 255) + ')'
+	  ctx.fillRect(0, 0, 20, 20);	
+	  this.ctxs.push(ctx);
+	  this.names.push(name);
+	}
+	requestAnimationFrame(this.updateTiles.bind(this));
+      },
+      updateTiles: function() {
+	this.ctxs[5].fillStyle = 'rgb(' + Math.round(Math.random() * 255) + ', ' +
+	                         Math.round(Math.random() * 255) + ', ' + 
+	                         Math.round(Math.random() * 255) + ')'
+	this.ctxs[5].fillRect(0, 0, 20, 20);
+	requestAnimationFrame(this.updateTiles.bind(this));
+      },
+    });
+  </script>
+</polymer-element>

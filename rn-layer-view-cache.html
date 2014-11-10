@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<link rel="import" href="bower_components/polymer/polymer.html">
+<link rel="import" href="rn-layer-view.html">
+<link rel="import" href="rn-tile-store.html">
+
+<polymer-element name="rn-layer-view-cache" attributes="layers tileStore currentLayer ticker">
+  <template>
+    <template repeat='{{layer in layers}}'>
+      <rn-layer-view layer='{{layer}}' tileStore='{{tileStore}}' ticker={{ticker}}></rn-layer-view>
+    </template>
+  </template>
+  <script>
+    Polymer({
+      layers : null,
+      tileStore: null,
+      currentLayer: -1,
+      ready: function() {
+        this.layers = [];
+      },
+      layersChanged: function() {
+        this.async(function() { this.currentLayerChanged(this.currentLayer); });
+      },
+      currentLayerChanged: function(previous) {
+        console.log('to', this.currentLayer);
+        var views = this.shadowRoot.querySelectorAll('rn-layer-view');
+        for (var i = 0; i < views.length; i++) {
+          views[i].hide();
+        }
+        if (this.currentLayer >= 0 && this.currentLayer < views.length) {
+          views[this.currentLayer].populate();
+          views[this.currentLayer].show();
+          if (this.currentLayer > 0) {
+            views[this.currentLayer - 1].backgroundPopulate();
+          }
+          if (this.currentLayer < views.length - 1) {
+            views[this.currentLayer + 1].backgroundPopulate();
+          }
+        }
+      },
+      loadInBackground: function(i) {
+        this.async(function() {
+          var views = this.shadowRoot.querySelectorAll('rn-layer-view');
+          views[i].backgroundPopulate();
+        });
+      }
+    });
+  </script>
+</polymer-element>

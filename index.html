@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<link rel="import" href="rn-layer.html"> 
+<link rel="import" href="rn-layer-view.html"> 
+<link rel="import" href="rn-layer-view-cache.html"> 
+<link rel="import" href="rn-tile-store.html"> 
+<link rel="import" href="rn-tile-set.html">
+<link rel="import" href="rn-tile-loader.html">
+<link rel="import" href="rn-critter.html">
+<link rel="import" href="rn-ticker.html">
+
+<style>
+rn-layer-view {
+  position: absolute;
+  top: 0px;
+  left: 0px;
+}
+</style>
+
+<rn-ticker id='ticker' interval=100></rn-ticker>
+<rn-layer-view-cache id='cache'></rn-layer-view-cache>
+<rn-multi-loader id='loader' tileWidth=32 tileHeight=32></rn-multi-loader>
+<script src='pathfinding-scratch.js'></script>
+<script>
+loader.tileSpecs = [
+  {url: 'resources/creatures.png', spec: {}},
+  {url: 'resources/tilec.png', spec: {}},
+  {url: 'resources/tilea1.png', spec: {}},
+  {url: 'resources/tilea5.png', spec: {'grass': [0, 2]}},
+  {url: 'resources/tileb.png', spec: {'shadow': [1, 2], 'tree': [4, 6], 'choppedTree': [3, 5]}}
+];
+animation(loader.tileSpecs[0].spec, 'blob', 0, 23, 3);
+animation(loader.tileSpecs[0].spec, 'dude', 0, 0, 3);
+roomTiles(loader.tileSpecs[1].spec, 'stone', 8, 13);
+for (var i = 0; i < 20; i++)
+  loader.tileSpecs[2].spec[i] = [Math.round(Math.random() * 16 - 0.5), Math.round(Math.random() * 12 - 0.5)];
+
+window.addEventListener('polymer-ready', function() {
+loader.loaded.then( function() {
+ 
+  var store = loader.tileStore;
+
+  store.setTile('sky', store.filledTile('#87CEFA'));
+ 
+  cache.tileStore = store;
+  cache.ticker = ticker;
+
+  for (var i = 0; i < 100; i++) {
+    var layer = document.createElement('rn-layer');
+    if (i < 10) {
+      layer.layerData = flat('sky');
+      var sky = layer;
+    } else if (i == 10) {
+      layer.layerData = flat('grass');
+      var grass = layer;
+    } else {
+      layer.layerData = random([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]);
+    }
+    cache.layers.push(layer);
+  }
+  cache.currentLayer = 10;
+ 
+  var roomID = grass.addRoom(10, 10, 20, 15, 'stone');
+  grass.removeSprite(20, 10, roomID);
+  sky.addRoom(10, 10, 20, 15, 'stone');
+
+  var blobAnim = {tiles: ['blob0', 'blob1', 'blob2', 'blob1'], duration: 2};
+  var dudeAnim = {tiles: ['dude0', 'dude1', 'dude2', 'dude1'], duration: 2};
+
+  var critter = document.createElement('rn-critter');
+  critter.position = [28, 23];
+  critter.sprite = dudeAnim;
+  critter.layer = grass;
+  critter.ticker = ticker;
+  document.body.appendChild(critter);
+
+  var bm = [];
+  for (var x = 0; x < 22; x++) {
+    var col = [];
+    for (var y = 0; y < 36; y++) {
+      col.push(Clear);
+    }
+    bm.push(col);
+  }
+
+  for (var i = 0; i < 160; i++) {
+    var x = 9 + Math.round(Math.random() * 22 - 0.5);
+    var y = 25 + Math.round(Math.random() * 20 - 0.5);
+    var tree = grass.addSprite(x, y, 'tree');
+    bm[x - 9][y - 9] = Blocked;
+  }
+
+  for (var i = 1; i < 21; i++) {
+    bm[i][1] = Blocked;
+    bm[i][15] = Blocked;
+  }
+  for (var i = 2; i < 15; i++) {
+    bm[1][i] = Blocked;
+    bm[20][i] = Blocked;
+  }
+  bm[11][1] = Clear;
+
+  for (var i = 0; i < 80; i++) {
+    store.setTile('map' + i, store.filledTile('rgba(' + (3 * i) + ', ' + (255 - 3 * i) + ', 0, 0.5)'));
+  }
+
+  store.setTile('path', store.filledTile('rgba(200,255,200,0.5)'));
+
+  var heatMap = generateHeatMap(bm, 21, 35);  
+  for (var x = 0; x < heatMap.length; x++) {
+    for (var y = 0; y < heatMap[x].length; y++) {
+      var condition = heatMap[x][y];
+      if (typeof condition == 'number') {
+        grass.addSprite(x + 9, y + 9, 'map' + condition);
+      }
+    }
+  }
+
+  var path = heatMapToPath(heatMap, 19, 14);
+  for (var i = 0; i < path.length; i++) {
+    path[i][0] += 9;
+    path[i][1] += 9;
+    grass.addSprite(path[i][0], path[i][1], 'path');
+  }
+  critter.path = path;
+
+}); });
+
+document.body.addEventListener('keypress', function(e) {
+  if (e.which == 60 && cache.currentLayer > 0) {
+    cache.currentLayer--;
+  }
+  if (e.which == 62 && cache.currentLayer < 99) {
+    cache.currentLayer++;
+  }
+  if (e.which == 97) {
+    document.body.scrollLeft = (Math.floor(document.body.scrollLeft / 20) - 10) * 20;
+  }
+
+  if (e.which == 100) {
+    document.body.scrollLeft = (Math.floor(document.body.scrollLeft / 20) + 10) * 20;
+  }
+
+  if (e.which == 115) {
+    document.body.scrollTop = (Math.floor(document.body.scrollTop / 20) + 10) * 20;
+  }
+
+  if (e.which == 119) {
+    document.body.scrollTop = (Math.floor(document.body.scrollTop / 20) - 10) * 20;
+  }
+
+});
+</script>

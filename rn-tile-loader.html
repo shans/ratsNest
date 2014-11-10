@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<link rel="import" href="bower_components/polymer/polymer.html">
+<link rel="import" href="rn-tile-set.html">
+
+<script>
+function animation(spec, name, x, y, run) {
+  for (var i = 0; i < run; i++) {
+    spec[name + i] = [x + i, y]
+  }
+}
+
+function roomTiles(spec, name, x, y) {
+  spec[name + '~tl'] = [x, y];
+  spec[name + '~t'] = [x + 1, y];
+  spec[name + '~tr'] = [x + 2, y];
+  spec[name + '~l'] = [x, y + 1];
+  spec[name + '~r'] = [x + 2, y + 1];
+  spec[name + '~bl'] = [x, y + 2];
+  spec[name + '~b'] = [x + 1, y + 2];
+  spec[name + '~br'] = [x + 2, y + 2];
+}
+</script>
+
+<polymer-element name="rn-tile-loader" attributes="url tileWidth tileHeight tileStore tileSpec">
+<template>
+  <rn-tile-set id='tileSet' url={{url}} tileWidth="{{tileWidth}}" tileHeight="{{tileHeight}}"></rn-tile-set>
+</template>
+<script>
+Polymer({
+  ready: function() {
+    this.loaded = new Promise(function(resolve, reject) {
+      this.resolve = resolve;
+    }.bind(this));
+    this.$.tileSet.loaded.then(function() {
+      for (tile in this.tileSpec) {
+        var position = this.tileSpec[tile];
+        this.tileStore.setTile(tile, this.$.tileSet.getTile(position[0], position[1]));
+      }
+      this.imgDataReady = true;
+      this.resolve();
+    }.bind(this))
+  },
+});
+</script> 
+</polymer-element>
+
+<polymer-element name="rn-multi-loader" attributes="tileWidth tileHeight tileStore tileSpecs">
+<template>
+  <rn-tile-store id='store' tileWidth={{tileWidth}} tileHeight={{tileHeight}}></rn-tile-store>
+  <template repeat='{{ tileSpec in tileSpecs }}'>
+    <rn-tile-loader url='{{tileSpec.url}}' tileWidth={{tileWidth}} tileHeight={{tileHeight}} 
+        tileSpec='{{tileSpec.spec}}' tileStore={{tileStore}}></rn-tile-loader>
+  </template>
+</template>
+<script>
+Polymer({
+  allLoaded: false,
+  ready: function()
+  {
+    this.tileStore = this.$.store;
+    this.loaded = new Promise(function(resolve, reject) {
+      this.resolve = resolve;
+    }.bind(this));
+    Promise.all([].map.call(this.shadowRoot.querySelectorAll('rn-tile-loader'),
+        function(x) { return x.loaded; })).then(function() { this.resolve(); }.bind(this));
+  }
+});
+</script>
+</polymer-element>
+    

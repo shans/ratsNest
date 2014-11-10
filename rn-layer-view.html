@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<link rel="import" href="bower_components/polymer/polymer.html">
+
+<polymer-element name="rn-layer-view" attributes="layer tileStore ticker">
+  <template>
+    <style id='cellStyle'>
+      canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: {{layer | layerToWidth}}px;
+        height: {{layer | layerToHeight}}px;
+      }
+    </style>
+    <div id='container'>
+    </div>
+  </template>
+  <script>
+    Polymer({
+      tileStore: null,
+      layer: null,
+      tileImgs: [],
+      context: null,
+      canvas: null,
+      visible: false,
+      tileMap: {},
+      changedTiles: {},
+      tileTicker: [],
+      registered: false,
+      _x: 0,
+      _y: 0,
+      layerChanged: function() {
+        this.layer.registerListener(this.updateLocation.bind(this));
+      },
+      updateLocation: function(x, y, tile) {
+        if (tile.duration) {
+          if (!this.registered) {
+            this.ticker.addListener(this.processTiles.bind(this));
+            this.registered = true;
+          }
+          this.tileTicker.push({x: x, y: y, tiles: tile.tiles, duration: tile.duration});
+        } else {
+          this.context.putImageData(this.tileStore.getTile(tile),
+              x * this.tileStore.tileWidth, y * this.tileStore.tileHeight);
+        }
+      },
+      processTiles: function(t) {
+        for (var i = 0; i < this.tileTicker.length; i++) {
+          var anim = this.tileTicker[i];
+          this.context.putImageData(this.tileStore.getTile(anim.tiles[Math.floor(t / anim.duration) % anim.tiles.length]),
+              anim.x * this.tileStore.tileWidth, anim.y * this.tileStore.tileHeight);
+        }
+      },
+      ready: function() {
+        var canvas = document.createElement('canvas');
+        canvas.setAttribute('width', this.layerToWidth(this.layer));
+        canvas.setAttribute('height', this.layerToWidth(this.layer));
+        this.canvas = canvas;
+        this.$.container.appendChild(canvas);
+        this.context = canvas.getContext('2d');
+        this.tileMap = {};
+        this.hide();
+      },
+      backgroundPopulate: function() {
+        var partial = function() {
+          var time = performance.now();
+          for (; this._x < this.layer.layerData.length; this._x++) {
+            for (; this._y < this.layer.layerData[this._x].length; this._y++) {
+              this.populateTile(this._x, this._y);
+              if (performance.now() - time > 10) {
+                requestAnimationFrame(partial);
+                return;
+              }
+            }
+            this._y = 0;
+          }
+        }.bind(this);
+        requestAnimationFrame(partial);
+      },  
+      populate: function() {
+        for (; this._x < this.layer.layerData.length; this._x++) {
+          for (this._y = 0; this._y < this.layer.layerData[this._x].length; this._y++) {
+            this.populateTile(this._x, this._y);
+          }
+        }
+      },
+      populateTile: function(x, y) {
+        var tile = this.layer.getTile(x, y);
+        this.updateLocation(x, y, tile);
+        if (this.tileMap[tile] == undefined) {
+          this.tileMap[tile] = [[x, y]];
+        } else {
+          this.tileMap[tile].push([x, y]);
+        }
+      },
+      clear: function() {
+        return;
+        if (this.canvas == null) {
+          return;
+        }
+        this.canvas.remove();
+        this.canvas = null;
+      },
+      show: function() {
+        this.visible = true;
+        for (tile in this.changedTiles) {
+          this.updateTileSlot(tile);
+        }
+        this.changedTiles = {};
+        this.$.container.style.opacity = 1;
+        for (duration in this.timeTicker) {
+          var i = setInterval(function() { this.processTiles(tile.duration); }.bind(this), tile.duration);
+          this.tileTicker[tile.duration].interval = i;
+        }
+      },
+      hide: function() {
+        this.visible = false;
+        this.$.container.style.opacity = 0;
+        for (duration in this.timeTicker) {
+          clearInterval(this.timeTicker[duration].interval);
+          this.timeTicker[duration].interval = undefined;
+        }
+      },
+      layerToWidth: function(layer) {
+        return layer.layerData.length * this.tileStore.tileWidth;
+      },
+      layerToHeight: function(layer) {
+        return layer.layerData[0].length * this.tileStore.tileHeight;
+      }
+    });
+  </script>
+</polymer-element>

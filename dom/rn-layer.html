@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<link rel="import" href="bower_components/polymer/polymer.html">
+
+<polymer-element name="rn-layer">
+  <script>
+    Polymer({
+      layerData: null,
+      ready: function() {
+	this.layerData = [];
+	for (var i = 0; i < 100; i++) {
+	  var row = [];
+	  for (var j = 0; j < 100; j++) {
+	    row.push(Math.round(Math.random() * 10 - 0.5));
+	  }
+	  this.layerData.push(row);
+	}
+      }
+    });
+  </script>
+</polymer-element>

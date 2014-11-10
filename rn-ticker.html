@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<link rel="import" href="bower_components/polymer/polymer.html">
+
+<polymer-element name="rn-ticker" attributes="interval">
+<script>
+Polymer({
+  interval: 200,
+  listeners: null,
+  count: 0,
+  ready: function() {
+    this.listeners = [];
+    setInterval(function() {
+      for (var i = 0; i < this.listeners.length; i++) {
+        this.listeners[i](this.count);
+      }
+      this.count++;
+    }.bind(this), this.interval);
+  },
+  addListener: function(listener) {
+    this.listeners.push(listener);
+  }
+});
+</script>

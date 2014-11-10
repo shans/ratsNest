@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<link rel="import" href="bower_components/polymer/polymer.html">
+
+<script>
+var uid = 0;
+
+function filledTile(color, width, height) {
+  var ctx = document.createElement("canvas");
+  ctx.width = width;
+  ctx.height = height;
+  ctx = ctx.getContext('2d');
+  ctx.fillStyle = color;
+  ctx.fillRect(0, 0, width, height);
+  return ctx.getImageData(0, 0, width, height);
+}
+
+</script>
+
+<polymer-element name="rn-tile-store" attributes="names tileWidth tileHeight">
+  <template>
+  </template>
+  <script>
+    Polymer({
+      tiles: {},
+      first: uid,
+      listeners: [],
+      tileWidth: 20,
+      tileHeight: 20,
+      setTile: function(id, tile) {
+        this.tiles[id] = tile;
+        for (var i = 0; i < this.listeners.length; i++)
+          this.listeners[i](id);
+      },
+      getTile: function(id) {
+        if (this.tiles[id] !== undefined) {
+          return this.tiles[id];
+        }
+        var components = id.split(':');
+        var ctx = document.createElement("canvas");
+        ctx.width = this.tileWidth;
+        ctx.height = this.tileHeight;
+        ctx = ctx.getContext('2d');
+        ctx.putImageData(this.tiles[components[0]], 0, 0);
+        for (var i = 1; i < components.length; i++) {
+          var tcanvas = document.createElement("canvas");
+          tcanvas.width = this.tileWidth;
+          tcanvas.height = this.tileHeight;
+          var tctx = tcanvas.getContext('2d');
+          tctx.putImageData(this.tiles[components[i]], 0, 0);
+          ctx.drawImage(tcanvas, 0, 0, this.tileWidth, this.tileHeight,
+              0, 0, this.tileWidth, this.tileHeight);
+        }
+        this.tiles[id] = ctx.getImageData(0, 0, this.tileWidth, this.tileHeight);
+        return this.tiles[id];
+      },
+      filledTile: function(color) {
+        return filledTile(color, this.tileWidth, this.tileHeight);
+      },
+      registerListener: function(listener) {
+        this.listeners.push(listener);
+      }
+    });
+  </script>
+</polymer-element>

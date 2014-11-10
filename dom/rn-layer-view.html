@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<link rel="import" href="bower_components/polymer/polymer.html">
+
+<polymer-element name="rn-layer-view" attributes="layer tileStore">
+  <template>
+    <style id='cellStyle'>
+      #container {
+        padding: 0px;
+        margin: 0px;
+        display: flex;
+        position: absolute;
+        top: 0;
+        left: 0;
+      }
+      .column {
+        flex: none;
+      }
+      .cell {
+	height: 20px;
+	width: 20px;
+      }
+    </style>
+    <template repeat='{{ tile in tileStore.names }}'>
+      <style>
+        .cell{{tile.id - tileStore.first}} { background: -webkit-canvas({{tile.canvas}}); }
+      </style>
+    </template>
+    <div id='container'>
+      <template repeat='{{ column in layerData }}'>
+	<div class='column'>
+	  <template repeat='{{ cell in column }}'>
+	    <div class='{{ cell | cellName }}'></div>
+	  </template>
+	</div>
+      </template>
+    </div>
+  </template>
+  <script>
+    Polymer({
+      layerData: null,
+      tileStore: null,
+      width: 0,
+      height: 0,
+      layer: null,
+      visible: false,
+      cellName: function(idx) {
+        return 'cell cell' + idx;
+      },
+      ready: function() {
+        this.layerData = [];
+        this.hide();
+      },
+      populate: function() {
+        if (this.layerData.length == 0)
+          this.layerData = this.layer.layerData;
+      },
+      clear: function() {
+        if (this.layerData.length != 0)
+          this.layerData = [];
+      },
+      show: function() {
+        this.$.container.style.transform = "translate(0px)";
+      },
+      hide: function() {
+        this.$.container.style.transform = "translate(2000px)";
+      }
+    });
+  </script>
+</polymer-element>

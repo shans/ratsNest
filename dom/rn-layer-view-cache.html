@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<link rel="import" href="bower_components/polymer/polymer.html">
+<link rel="import" href="rn-layer-view.html">
+<link rel="import" href="rn-tile-store.html">
+
+<polymer-element name="rn-layer-view-cache" attributes="layers tileStore currentLayer">
+  <template>
+    <template repeat='{{layer in layers}}'>
+      <rn-layer-view layer='{{layer}}' tileStore='{{tileStore}}'></rn-layer-view>
+    </template>
+  </template>
+  <script>
+    Polymer({
+      layers : null,
+      tileStore: null,
+      currentLayer: -1,
+      ready: function() {
+        this.layers = [];
+      },
+      currentLayerChanged: function(previous) {
+        console.log('to', this.currentLayer);
+        var views = this.shadowRoot.querySelectorAll('rn-layer-view');
+        for (var i = 0; i < views.length; i++) {
+          if (Math.abs(i - this.currentLayer) < 4) {
+            views[i].populate();
+          } else if (Math.abs(i - this.currentLayer) > 8) {
+            views[i].clear();
+          }
+          views[i].hide();
+        }
+        if (this.currentLayer >= 0 && this.currentLayer < views.length) {
+          views[this.currentLayer].show();
+        }
+      }
+    });
+  </script>
+</polymer-element>

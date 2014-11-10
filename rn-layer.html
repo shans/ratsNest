@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<link rel="import" href="bower_components/polymer/polymer.html">
+
+<script>
+function flat(tile) {
+  var data = [];
+  for (var i = 0; i < 100; i++) {
+    var row = [];
+    for (var j = 0; j < 100; j++) {
+      row.push(tile);
+    }
+    data.push(row);
+  }
+  return data;
+}
+
+function random(tiles) {
+  var data = [];
+  for (var i = 0; i < 100; i++) {
+    var row = [];
+    for (var j = 0; j < 100; j++) {
+      row.push(tiles[Math.round(Math.random() * tiles.length - 0.5)]);
+    }
+    data.push(row);
+  }
+  return data;
+}
+
+</script>
+
+</script>
+
+<polymer-element name="rn-layer" attributes="layerData">
+  <script>
+    Polymer({
+      layerData: null,
+      listeners: null,
+      uid: 0,
+      ready: function() {
+        this.layerData = [];
+        this.listeners = [];
+      },
+      registerListener: function(listener) {
+        this.listeners.push(listener);
+      },
+      setTile: function(x, y, tile) {
+        if (this.layerData[x][y].base == undefined) 
+          this.layerData[x][y] = tile;
+        else
+          this.layerData[x][y].base = tile;
+
+        this.notify(x, y);
+      },
+      notify: function(x, y) {
+        for (var i = 0; i < this.listeners.length; i++) {
+          this.listeners[i](x, y, this.makeTile(this.layerData[x][y]));
+        }
+      },
+      makeTile: function(tile) {
+        if (tile.base == undefined) {
+          return tile;
+        }
+        var result = tile.base;
+        for (var i in tile.fixed) {
+          result += ':' + tile.fixed[i];
+        }
+        var actives = Object.keys(tile.active);
+        if (actives.length > 0) {
+          var active = actives[actives.length - 1];
+          var tiles = [];
+          for (var i = 0; i < active.tiles.length; i++) {
+            tiles.push(result + ':' + active.tiles[i]);
+          }
+          return {tiles: tiles, duration: active.duration};
+        }
+        return result;
+      },
+      getTile: function(x, y) {
+        return this.makeTile(this.layerData[x][y]);
+      },
+      addRoom: function(x, y, width, height, material) {
+        var mspec = material + '~';
+        var idx = this.uid++;
+        this._addSprite(x, y, mspec + 'tl', idx)
+        this._addSprite(x + width - 1, y, mspec + 'tr', idx);
+        this._addSprite(x, y + height - 1, mspec + 'bl', idx);
+        this._addSprite(x + width - 1, y + height - 1, mspec + 'br', idx);
+        this._addSprite(x + width, y + height - 1, 'shadow', idx);
+        for (var i = 1; i < width - 1; i++) {
+          this._addSprite(x + i, y, mspec + 't', idx);
+          this._addSprite(x + i, y + height - 1, mspec + 'b', idx);
+        }
+        for (i = 1; i < height - 1; i++) {
+          this._addSprite(x, y + i, mspec + 'l', idx);
+          this._addSprite(x + width - 1, y + i, mspec + 'r', idx);
+          this._addSprite(x + width, y + i, 'shadow', idx);
+        }
+        return 'f' + idx;
+      },
+      addSprite: function(x, y, sprite) {
+        var idx = this.uid++;
+        return this._addSprite(x, y, sprite, idx);
+      },
+      _addSprite: function(x, y, sprite, idx) {
+        var ld = this.layerData[x][y];
+        if (ld.base == undefined) {
+          ld = {base: ld, fixed: {}, active: {}};
+        }
+        if (sprite.duration == undefined) {
+          idx = 'f' + idx;
+          ld.fixed[idx] = sprite;
+        } else {
+          idx = 'a' + idx;
+          ld.active[idx] = sprite;
+        }
+        this.layerData[x][y] = ld;
+        this.notify(x, y);
+        return idx;
+      },  
+      changeSprite: function(x, y, id, tile) {
+        var ld = this.layerData[x][y];
+        if (id[0] == 'a') {
+          this.layerData[x][y].active[id] = tile;
+        } else {
+          this.layerData[x][y].fixed[id] = tile;
+        }
+        this.notify(x, y);
+      },
+      removeSprite: function(x, y, id) {
+        if (id[0] == 'a') {
+          delete this.layerData[x][y].active[id];
+        } else {
+          delete this.layerData[x][y].fixed[id];
+        }
+        this.notify(x, y);
+      }
+    });
+  </script>
+</polymer-element>

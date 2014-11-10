@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<link rel="import" href="bower_components/polymer/polymer.html">
+
+<polymer-element name="rn-critter" attributes="layer position sprite movePeriod ticker path">
+<script>
+Polymer({
+  path: null,
+  spriteID: null,
+  observe: {
+    layer: 'addSelf',
+    position: 'addSelf',
+    sprite: 'addSelf'
+  },
+  tickerChanged: function() {
+    if (this.ticker !== undefined) 
+    {
+      console.log('add');
+      this.ticker.addListener(this.updateOnTick.bind(this));
+    }
+  },
+  updateOnTick: function(t) {
+    var tile = this.sprite;
+    if (this.path.length == 0) {
+      if (this.sprite.duration == undefined || t % this.sprite.duration !== 0) {
+        return;
+      }
+    }
+    if (this.sprite.duration !== undefined) {
+      tile = this.sprite.tiles[Math.floor(t / this.sprite.duration) % this.sprite.tiles.length];
+    }
+    if (this.path.length !== 0) {
+      this.layer.removeSprite(this.position[0], this.position[1], this.spriteID);
+      this.position = this.path[0];
+      this.path.splice(0, 1);
+      this.spriteID = this.layer.addSprite(this.position[0], this.position[1], tile);
+    } else {
+      this.layer.changeSprite(this.position[0], this.position[1], this.spriteID, tile);
+    }
+  },
+  ready: function() {
+    this.addSelf();
+    this.path = [];
+  },
+  addSelf: function() {
+    if (this.spriteID == null && this.layer !== undefined && this.position !== undefined && this.sprite !== undefined) {
+      this.spriteID = this.layer.addSprite(this.position[0], this.position[1], this.sprite.tiles[0]);
+    }
+  },
+
+});
+</script>
+</polymer-element>
