@@ -83,9 +83,8 @@ function sparsePath(blockMap, x0, y0, x1, y1, depth) {
 }
 
 function lookup(map, x, y) {
-  try {
+  if (map[x]) {
     return map[x][y];
-  } catch (e) {
   }
 }
 
@@ -94,52 +93,76 @@ function neighbours(x, y) {
 }
 
 function generateHeatMap(blockMap, xdest, ydest) {
-  var s = performance.now();
   var heatMap = [];
   var uNum = 0;
   for (var i = 0; i < blockMap.length; i++) {
-    heatMap.push(blockMap[i].slice());
-    for (var j = 0; j < blockMap[i].length; j++) {
-      if (blockMap[i][j] == Clear) {
+    heatMap.push(blockMap[i].map(function(a) {
+      if (a == Clear) {
         uNum++;
+        return a;
       }
-    }
+      return Blocked;
+    }));
   }
   heatMap[xdest][ydest] = 0;
-  var queue = [[xdest, ydest]];
+  var qx = [xdest];
+  var qy = [ydest];
+  return solveHeatMap(heatMap, qx, qy, uNum);
+}
+
+function generateMultiHeatMap(blockMap, target, minX, maxX, minY, maxY) {
+  minX = minX || 0;
+  maxX = maxX || blockMap.length;
+  minY = minY || 0;
+  maxY = maxY || blockMap[0].length;
+  var heatMap = [];
+  var uNum = 0;
+  var qx = [];
+  var qy = [];
+  for (var x = 0; x < blockMap.length; x++) {
+    heatMap.push(blockMap[x].map(function(a, y) {
+      if (a == target && x >= minX && x < maxX && y >= minY && y < maxY) {
+        qx.push(x);
+        qy.push(y);
+        return 0;
+      }
+      if (a == Clear) {
+        uNum++;
+        return a;
+      }
+      return Blocked;
+    }));
+  }
+  return solveHeatMap(heatMap, qx, qy, uNum);
+}
+
+function solveHeatMap(heatMap, qx, qy, uNum) {
   var qPos = 0;
   while (uNum > 0) {
-    if (qPos >= queue.length) {
+    if (qPos >= qx.length) {
       break;
     }
-    var elt = queue[qPos++];
-    var curDist = heatMap[elt[0]][elt[1]] + 1;
-    var newElts = neighbours(elt[0], elt[1]);
+    var eltx = qx[qPos];
+    var elty = qy[qPos++];
+    var curDist = heatMap[eltx][elty] + 1;
+    var newElts = neighbours(eltx, elty);
     for (var i = 0; i < newElts.length; i++) {
-      var condition = lookup(heatMap, newElts[i][0], newElts[i][1]);
+      var x = newElts[i][0];
+      var y = newElts[i][1];
+      var condition = lookup(heatMap, x, y);
       if (condition == undefined) {
         continue;
       }
-      if (condition == Blocked) {
-        continue;
-      } else if (condition == Clear) {
+      if (condition == Clear) {
         uNum--;
-        heatMap[newElts[i][0]][newElts[i][1]] = curDist;
-        queue.push(newElts[i]);
-      } else if (curDist < condition) {
-        heatMap[newElts[i][0]][newElts[i][1]] = curDist;
-        var pos = queue.indexOf(newElts[i]);
-        if (pos >= 0 && pos < qPos) {
-          qPos -= 1;
-          queue.splice(pos, 1);
-          queue.push(newElts[i]);
-        } else if (pos < 0) {
-          queue.push(newElts[i]);
-        }
+        heatMap[x][y] = curDist;
+        qx.push(x);
+	qy.push(y);
+      } else if (typeof condition != Blocked && curDist < condition) {
+        heatMap[x][y] = curDist;
       }
     }
   }
-  console.log(performance.now() - s);
   return heatMap;
 }
 

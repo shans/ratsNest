@@ -34,11 +34,24 @@ function random(tiles) {
   <script>
     Polymer({
       layerData: null,
+      blockMap: null,
       listeners: null,
       uid: 0,
       ready: function() {
         this.layerData = [];
+        this.blockMap = [];
         this.listeners = [];
+      },
+      setData: function(data) {
+        this.layerData = data;
+        this.blockMap = [];
+        for (var x = 0; x < this.layerData.length; x++) {
+          var column = [];
+          for (var y = 0; y < this.layerData[0].length; y++) {
+            column.push(Clear);
+          }
+          this.blockMap.push(column);
+        }
       },
       registerListener: function(listener) {
         this.listeners.push(listener);
@@ -48,7 +61,6 @@ function random(tiles) {
           this.layerData[x][y] = tile;
         else
           this.layerData[x][y].base = tile;
-
         this.notify(x, y);
       },
       notify: function(x, y) {
@@ -63,6 +75,9 @@ function random(tiles) {
         var result = tile.base;
         for (var i in tile.fixed) {
           result += ':' + tile.fixed[i];
+        }
+        for (var i in tile.impassable) {
+          result += ':' + tile.impassable[i];
         }
         var actives = Object.keys(tile.active);
         if (actives.length > 0) {
@@ -81,32 +96,40 @@ function random(tiles) {
       addRoom: function(x, y, width, height, material) {
         var mspec = material + '~';
         var idx = this.uid++;
-        this._addSprite(x, y, mspec + 'tl', idx)
-        this._addSprite(x + width - 1, y, mspec + 'tr', idx);
-        this._addSprite(x, y + height - 1, mspec + 'bl', idx);
-        this._addSprite(x + width - 1, y + height - 1, mspec + 'br', idx);
-        this._addSprite(x + width, y + height - 1, 'shadow', idx);
+        this._addSprite(x, y, mspec + 'tl', idx, false)
+        this._addSprite(x + width - 1, y, mspec + 'tr', idx, false);
+        this._addSprite(x, y + height - 1, mspec + 'bl', idx, false);
+        this._addSprite(x + width - 1, y + height - 1, mspec + 'br', idx, false);
+        this._addSprite(x + width, y + height - 1, 'shadow', idx, true);
         for (var i = 1; i < width - 1; i++) {
-          this._addSprite(x + i, y, mspec + 't', idx);
-          this._addSprite(x + i, y + height - 1, mspec + 'b', idx);
+          this._addSprite(x + i, y, mspec + 't', idx, false);
+          this._addSprite(x + i, y + height - 1, mspec + 'b', idx, false);
         }
         for (i = 1; i < height - 1; i++) {
-          this._addSprite(x, y + i, mspec + 'l', idx);
-          this._addSprite(x + width - 1, y + i, mspec + 'r', idx);
-          this._addSprite(x + width, y + i, 'shadow', idx);
+          this._addSprite(x, y + i, mspec + 'l', idx, false);
+          this._addSprite(x + width - 1, y + i, mspec + 'r', idx, false);
+          this._addSprite(x + width, y + i, 'shadow', idx, true);
         }
-        return 'f' + idx;
+        return 'i' + idx;
       },
-      addSprite: function(x, y, sprite) {
+      addSprite: function(x, y, sprite, passable) {
         var idx = this.uid++;
-        return this._addSprite(x, y, sprite, idx);
+        return this._addSprite(x, y, sprite, idx, passable);
       },
-      _addSprite: function(x, y, sprite, idx) {
+      _addSprite: function(x, y, sprite, idx, passable) {
         var ld = this.layerData[x][y];
         if (ld.base == undefined) {
-          ld = {base: ld, fixed: {}, active: {}};
+          ld = {base: ld, fixed: {}, active: {}, impassable: {}};
         }
-        if (sprite.duration == undefined) {
+        if (passable == false) {
+          idx = 'i' + idx;
+          ld.impassable[idx] = sprite;
+          if (Object.keys(ld.impassable).length == 1) {
+            this.blockMap[x][y] = sprite;
+          } else {
+            this.blockMap[x][y] = Blocked;
+          }
+        } else if (sprite.duration == undefined) {
           idx = 'f' + idx;
           ld.fixed[idx] = sprite;
         } else {
@@ -121,6 +144,8 @@ function random(tiles) {
         var ld = this.layerData[x][y];
         if (id[0] == 'a') {
           this.layerData[x][y].active[id] = tile;
+        } else if (id[0] == 'i') {
+          this.layerData[x][y].impassable[id] = tile;
         } else {
           this.layerData[x][y].fixed[id] = tile;
         }
@@ -129,6 +154,13 @@ function random(tiles) {
       removeSprite: function(x, y, id) {
         if (id[0] == 'a') {
           delete this.layerData[x][y].active[id];
+        } else if (id[0] == 'i') {
+          delete this.layerData[x][y].impassable[id];
+          var keys = Object.keys(this.layerData[x][y].impassable);
+          if (keys.length == 0)
+            this.blockMap[x][y] = Clear;
+          else if (keys.length == 1)
+            this.blockMap[x][y] = this.layerData[x][y].impassable[keys[0]];
         } else {
           delete this.layerData[x][y].fixed[id];
         }

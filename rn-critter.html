@@ -5,7 +5,9 @@
 <script>
 Polymer({
   path: null,
+  pathComplete: null,
   spriteID: null,
+  onMove: null,
   observe: {
     layer: 'addSelf',
     position: 'addSelf',
@@ -21,6 +23,10 @@ Polymer({
   updateOnTick: function(t) {
     var tile = this.sprite;
     if (this.path.length == 0) {
+      if (this.pathComplete) {
+        this.pathComplete(this.pathCompleteData);
+        this.pathComplete = null;
+      }
       if (this.sprite.duration == undefined || t % this.sprite.duration !== 0) {
         return;
       }
@@ -30,9 +36,13 @@ Polymer({
     }
     if (this.path.length !== 0) {
       this.layer.removeSprite(this.position[0], this.position[1], this.spriteID);
+      var oldPos = this.position;
       this.position = this.path[0];
       this.path.splice(0, 1);
       this.spriteID = this.layer.addSprite(this.position[0], this.position[1], tile);
+      if (this.onMove) {
+        this.onMove(this.position, oldPos);
+      }
     } else {
       this.layer.changeSprite(this.position[0], this.position[1], this.spriteID, tile);
     }
@@ -46,7 +56,36 @@ Polymer({
       this.spriteID = this.layer.addSprite(this.position[0], this.position[1], this.sprite.tiles[0]);
     }
   },
-
+  routeTo: function(x, y) {
+    var heatMap = generateHeatMap(this.layer.blockMap, x, y);  
+    this.path = heatMapToPath(heatMap, this.position[0], this.position[1]);
+    this.pathCompleteData = [x, y];
+    return new Promise(function(resolve, reject) {
+      this.pathComplete = resolve;
+    }.bind(this));
+  },
+  routeToAny: function(thing, minX, maxX, minY, maxY, takeLastStep) {
+    var heatMap = generateMultiHeatMap(this.layer.blockMap, thing, minX, maxX, minY, maxY);
+    /*
+    for (var x = 0; x < heatMap.length; x++) {
+      for (var y = 0; y < heatMap[x].length; y++) {
+        var heat = heatMap[x][y];
+        if (heat < 50) {
+          this.layer.addSprite(x, y, 'heat' + heat);
+        }
+      }
+    }
+    */
+    var path = heatMapToPath(heatMap, this.position[0], this.position[1]);
+    this.pathCompleteData = path[path.length - 1];
+    if (takeLastStep == false) {
+      path = path.slice(0, path.length - 1);
+    }
+    this.path = path;
+    return new Promise(function(resolve, reject) {
+      this.pathComplete = resolve;
+    }.bind(this));
+  }
 });
 </script>
 </polymer-element>

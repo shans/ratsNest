@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<script src='pathfinding-scratch.js'></script>
 <link rel="import" href="rn-layer.html"> 
 <link rel="import" href="rn-layer-view.html"> 
 <link rel="import" href="rn-layer-view-cache.html"> 
@@ -16,16 +17,15 @@ rn-layer-view {
 }
 </style>
 
-<rn-ticker id='ticker' interval=100></rn-ticker>
+<rn-ticker id='ticker' interval=50></rn-ticker>
 <rn-layer-view-cache id='cache'></rn-layer-view-cache>
 <rn-multi-loader id='loader' tileWidth=32 tileHeight=32></rn-multi-loader>
-<script src='pathfinding-scratch.js'></script>
 <script>
 loader.tileSpecs = [
   {url: 'resources/creatures.png', spec: {}},
   {url: 'resources/tilec.png', spec: {}},
   {url: 'resources/tilea1.png', spec: {}},
-  {url: 'resources/tilea5.png', spec: {'grass': [0, 2]}},
+  {url: 'resources/tilea5.png', spec: {'grass': [0, 2], 'dirt': [2, 2]}},
   {url: 'resources/tileb.png', spec: {'shadow': [1, 2], 'tree': [4, 6], 'choppedTree': [3, 5]}}
 ];
 animation(loader.tileSpecs[0].spec, 'blob', 0, 23, 3);
@@ -47,13 +47,13 @@ loader.loaded.then( function() {
   for (var i = 0; i < 100; i++) {
     var layer = document.createElement('rn-layer');
     if (i < 10) {
-      layer.layerData = flat('sky');
+      layer.setData(flat('sky'));
       var sky = layer;
     } else if (i == 10) {
-      layer.layerData = flat('grass');
+      layer.setData(flat('grass'));
       var grass = layer;
     } else {
-      layer.layerData = random([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]);
+      layer.setData(random([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]));
     }
     cache.layers.push(layer);
   }
@@ -72,56 +72,45 @@ loader.loaded.then( function() {
   critter.layer = grass;
   critter.ticker = ticker;
   document.body.appendChild(critter);
+  critter.onMove = function(newPos, oldPos) {
+    if (Math.random() < 0.02) {
+      grass.setTile(oldPos[0], oldPos[1], 'dirt');
+    }
+  }
 
   var bm = [];
-  for (var x = 0; x < 22; x++) {
+  for (var x = 0; x < 100; x++) {
     var col = [];
-    for (var y = 0; y < 36; y++) {
+    for (var y = 0; y < 100; y++) {
       col.push(Clear);
     }
     bm.push(col);
   }
 
+  var trees = {}
   for (var i = 0; i < 160; i++) {
-    var x = 9 + Math.round(Math.random() * 22 - 0.5);
+    var x = 10 + Math.round(Math.random() * 20 - 0.5);
     var y = 25 + Math.round(Math.random() * 20 - 0.5);
-    var tree = grass.addSprite(x, y, 'tree');
-    bm[x - 9][y - 9] = Blocked;
+    if (trees[x + '.' + y] == undefined)
+      trees[x + '.' + y] = grass.addSprite(x, y, 'tree', false);
   }
 
-  for (var i = 1; i < 21; i++) {
-    bm[i][1] = Blocked;
-    bm[i][15] = Blocked;
+  /*
+  for (var i = 0; i < 50; i++) {
+    store.setTile('heat' + i, store.filledTile('rgba(255, ' + (255 - i * 5) + ', ' + (255 - i * 5) + ', 0.5)'));
   }
-  for (var i = 2; i < 15; i++) {
-    bm[1][i] = Blocked;
-    bm[20][i] = Blocked;
+  */
+      
+  critter.routeTo(20, 44);
+  function getATree(critter) {
+    critter.routeToAny('tree', 15, 25, 35, 45, false).then(function(pos) {
+      var tree = trees[pos[0] + '.' + pos[1]];
+      grass.removeSprite(pos[0], pos[1], tree);
+      grass.addSprite(pos[0], pos[1], 'choppedTree', true);
+      critter.routeTo(28, 23).then(function() { getATree(critter); });
+    });
   }
-  bm[11][1] = Clear;
-
-  for (var i = 0; i < 80; i++) {
-    store.setTile('map' + i, store.filledTile('rgba(' + (3 * i) + ', ' + (255 - 3 * i) + ', 0, 0.5)'));
-  }
-
-  store.setTile('path', store.filledTile('rgba(200,255,200,0.5)'));
-
-  var heatMap = generateHeatMap(bm, 21, 35);  
-  for (var x = 0; x < heatMap.length; x++) {
-    for (var y = 0; y < heatMap[x].length; y++) {
-      var condition = heatMap[x][y];
-      if (typeof condition == 'number') {
-        grass.addSprite(x + 9, y + 9, 'map' + condition);
-      }
-    }
-  }
-
-  var path = heatMapToPath(heatMap, 19, 14);
-  for (var i = 0; i < path.length; i++) {
-    path[i][0] += 9;
-    path[i][1] += 9;
-    grass.addSprite(path[i][0], path[i][1], 'path');
-  }
-  critter.path = path;
+  getATree(critter);
 
 }); });
 
